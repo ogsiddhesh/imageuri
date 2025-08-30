@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image URI Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <style>
+        /* Base styles & transitions */
+        body {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* Custom styles for dark mode toggle */
+        .theme-switch-wrapper {
+            display: flex;
+            align-items: center;
+        }
+        .theme-switch {
+            display: inline-block;
+            height: 24px;
+            position: relative;
+            width: 48px;
+        }
+        .theme-switch input {
+            display: none;
+        }
+        .slider {
+            background-color: #ccc;
+            bottom: 0;
+            cursor: pointer;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: .4s;
+        }
+        .slider:before {
+            background-color: #fff;
+            bottom: 2px;
+            content: "";
+            height: 20px;
+            left: 2px;
+            position: absolute;
+            transition: .4s;
+            width: 20px;
+        }
+        input:checked + .slider {
+            background-color: #4f46e5;
+        }
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+        .slider.round {
+            border-radius: 34px;
+        }
+        .slider.round:before {
+            border-radius: 50%;
+        }
+    </style>
+    <script>
+        
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+</head>
+
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-sans min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-4xl mx-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 md:p-8">
+
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-indigo-600 dark:text-indigo-400">Image URI Converter</h1>
+            <div class="theme-switch-wrapper">
+                <i class="fas fa-sun mr-2 text-yellow-500"></i>
+                <label class="theme-switch" for="theme-toggle">
+                    <input type="checkbox" id="theme-toggle" />
+                    <span class="slider round"></span>
+                </label>
+                <i class="fas fa-moon ml-2 text-slate-400"></i>
+            </div>
+        </header>
+
+        <div class="flex border-b border-slate-200 dark:border-slate-700 mb-6">
+            <button id="p2c-tab" class="tab-button flex-1 py-3 px-4 text-center font-semibold border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400">
+                <i class="fas fa-image mr-2"></i> Photo to Code
+            </button>
+            <button id="c2p-tab" class="tab-button flex-1 py-3 px-4 text-center font-semibold border-b-2 border-transparent text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400">
+                <i class="fas fa-code mr-2"></i> Code to Photo
+            </button>
+        </div>
+
+        <main>
+            <div id="photo-to-code" class="tab-content active">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="file-upload" class="cursor-pointer">
+                            <div id="drop-zone" class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-slate-400 mb-2"></i>
+                                <p class="text-sm text-slate-500 dark:text-slate-400"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">PNG, JPG, GIF, WEBP</p>
+                            </div>
+                        </label>
+                        <input id="file-upload" type="file" class="hidden" accept="image/png, image/jpeg, image/gif, image/webp">
+                        <div id="preview-container" class="mt-4 hidden">
+                            <p class="text-sm font-medium mb-2">Preview:</p>
+                            <img id="image-preview" src="" alt="Image Preview" class="max-h-40 rounded-lg shadow-md mx-auto">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="uri-output" class="block text-sm font-medium mb-2">Generated Data URI:</label>
+                        <textarea id="uri-output" readonly placeholder="Your Data URI will appear here..." class="w-full h-48 p-3 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"></textarea>
+                        <button id="copy-button" class="mt-4 w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-slate-800 disabled:bg-slate-400 dark:disabled:bg-slate-600 transition-all flex items-center justify-center" disabled>
+                            <i class="fas fa-copy mr-2"></i>
+                            <span id="copy-text">Copy to Clipboard</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="code-to-photo" class="tab-content">
+                <div>
+                    <label for="uri-input" class="block text-sm font-medium mb-2">Paste Data URI:</label>
+                    <textarea id="uri-input" placeholder="Paste your Data URI code here..." class="w-full h-32 p-3 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y"></textarea>
+                    
+                    <div id="result-container" class="mt-6 text-center hidden">
+                         <p class="text-sm font-medium mb-2">Resulting Image:</p>
+                         <div class="p-4 bg-slate-100 dark:bg-slate-700 inline-block rounded-lg shadow-inner">
+                            <img id="result-image" src="" alt="Resulting Image" class="max-h-64 max-w-full rounded">
+                         </div>
+                         <a id="download-link" href="#" download="image.png" class="mt-4 w-full md:w-auto inline-block bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-slate-800 transition-colors">
+                            <i class="fas fa-download mr-2"></i> Download Image
+                        </a>
+                    </div>
+                    <p id="error-message" class="text-red-500 text-sm mt-2 text-center"></p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center text-sm md:text-base text-slate-400 dark:text-slate-500 mt-8 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <p>
+                Built by 
+                <a href="https://siddhesh.site" target="_blank" rel="noopener noreferrer" class="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    Siddhesh Chaube
+                </a>
+            </p>
+        </footer>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const themeToggle = document.getElementById('theme-toggle');
+            const p2cTab = document.getElementById('p2c-tab');
+            const c2pTab = document.getElementById('c2p-tab');
+            const photoToCodeSection = document.getElementById('photo-to-code');
+            const codeToPhotoSection = document.getElementById('code-to-photo');
+            
+            const fileInput = document.getElementById('file-upload');
+            const dropZone = document.getElementById('drop-zone');
+            const previewContainer = document.getElementById('preview-container');
+            const imagePreview = document.getElementById('image-preview');
+            const uriOutput = document.getElementById('uri-output');
+            const copyButton = document.getElementById('copy-button');
+            const copyText = document.getElementById('copy-text');
+
+            const uriInput = document.getElementById('uri-input');
+            const resultContainer = document.getElementById('result-container');
+            const resultImage = document.getElementById('result-image');
+            const downloadLink = document.getElementById('download-link');
+            const errorMessage = document.getElementById('error-message');
+
+            const applyTheme = (isDark) => {
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                }
+            };
+
+            themeToggle.checked = document.documentElement.classList.contains('dark');
+            
+            themeToggle.addEventListener('change', (e) => {
+                applyTheme(e.target.checked);
+            });
+
+            function switchTab(activeTab) {
+                if (activeTab === 'p2c') {
+                    p2cTab.classList.add('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+                    p2cTab.classList.remove('border-transparent', 'text-slate-500');
+                    c2pTab.classList.remove('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+                    c2pTab.classList.add('border-transparent', 'text-slate-500');
+                    photoToCodeSection.classList.add('active');
+                    codeToPhotoSection.classList.remove('active');
+                } else {
+                    c2pTab.classList.add('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+                    c2pTab.classList.remove('border-transparent', 'text-slate-500');
+                    p2cTab.classList.remove('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+                    p2cTab.classList.add('border-transparent', 'text-slate-500');
+                    codeToPhotoSection.classList.add('active');
+                    photoToCodeSection.classList.remove('active');
+                }
+            }
+            p2cTab.addEventListener('click', () => switchTab('p2c'));
+            c2pTab.addEventListener('click', () => switchTab('c2p'));
+
+            const handleFile = (file) => {
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        uriOutput.value = e.target.result;
+                        imagePreview.src = e.target.result;
+                        previewContainer.classList.remove('hidden');
+                        copyButton.disabled = false;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    alert('Please select a valid image file.');
+                    uriOutput.value = '';
+                    previewContainer.classList.add('hidden');
+                    copyButton.disabled = true;
+                }
+            };
+            
+            fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('bg-slate-100', 'dark:bg-slate-700');
+            });
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('bg-slate-100', 'dark:bg-slate-700');
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('bg-slate-100', 'dark:bg-slate-700');
+                const file = e.dataTransfer.files[0];
+                handleFile(file);
+            });
+
+            copyButton.addEventListener('click', () => {
+                
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(uriOutput.value).then(() => {
+                        copyText.textContent = 'Copied!';
+                        copyButton.classList.replace('bg-indigo-600', 'bg-green-600');
+                        setTimeout(() => {
+                            copyText.textContent = 'Copy to Clipboard';
+                            copyButton.classList.replace('bg-green-600', 'bg-indigo-600');
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                        alert('Failed to copy. Please copy manually.');
+                    });
+                } else {
+                    uriOutput.select();
+                    try {
+                        document.execCommand('copy');
+                        copyText.textContent = 'Copied!';
+                        copyButton.classList.replace('bg-indigo-600', 'bg-green-600');
+                        setTimeout(() => {
+                            copyText.textContent = 'Copy to Clipboard';
+                            copyButton.classList.replace('bg-green-600', 'bg-indigo-600');
+                        }, 2000);
+                    } catch (err) {
+                        console.error('Fallback: Failed to copy text: ', err);
+                        alert('Failed to copy. Please copy manually.');
+                    }
+                }
+            });
+
+
+            uriInput.addEventListener('input', (e) => {
+                const text = e.target.value.trim();
+                errorMessage.textContent = '';
+                if (text.startsWith('data:image/')) {
+                    resultImage.src = text;
+                    downloadLink.href = text;
+
+                    const mimeType = text.substring(text.indexOf(':') + 1, text.indexOf(';'));
+                    const extension = mimeType.split('/')[1] || 'png';
+                    downloadLink.download = `image.${extension}`;
+                    
+                    resultContainer.classList.remove('hidden');
+                } else {
+                    resultContainer.classList.add('hidden');
+                    if(text.length > 10) { 
+                       errorMessage.textContent = 'This does not look like a valid Data URI.';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
